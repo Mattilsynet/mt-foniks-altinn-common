@@ -1,2 +1,2 @@
 # mt-foniks-altinn-common
-Utilites som brukes på tvers av 
+C# Utilites som brukes på tvers av altinn skjemaer
