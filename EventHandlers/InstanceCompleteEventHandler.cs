@@ -2,15 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Altinn.App.clients;
-using Altinn.App.config;
 using Altinn.App.Core.Features;
 using Altinn.App.Core.Models;
-using Altinn.App.models;
 using Json.More;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using MtAltinnCommon.Clients.Nats;
+using MtAltinnCommon.Models;
 
 namespace MtAltinnCommon.EventHandlers;
 
@@ -36,10 +34,10 @@ public class InstanceCompleteEventHandler : IEventHandler
     {
         try
         {
-            CloudEventData skjemadata = await GetCloudEventData(cloudEvent);
-            if (skjemadata != null)
+            CloudEventData? skjemadata = await GetCloudEventData(cloudEvent);
+            if (skjemadata != null && skjemadata.data != null)
             {
-                var data = await GetNatsAltinnPayload(skjemadata.data);
+                NatsAltinnPayload? data = await GetNatsAltinnPayload(skjemadata.data);
                 if (data != null)
                 {
                     return await PublishDataToNats(data);
@@ -55,41 +53,46 @@ public class InstanceCompleteEventHandler : IEventHandler
         _logger.LogError("Ferdig å prossesere event, returnerer true");
         return true;
     }
-
-    private async Task<NatsAltinnPayload> GetNatsAltinnPayload(List<Datum> data)
+    private async Task<NatsAltinnPayload?> GetNatsAltinnPayload(List<Datum> data)
     {
         var payload = new NatsAltinnPayload();
 
         foreach (var datum in data)
         {
-            var responseData = await GetAltinnData(datum.selfLinks.platform, datum.contentType);
+            if (datum.selfLinks is not null && datum.selfLinks.platform is not null && datum.contentType is not null)
+            {
+                var responseData = await GetAltinnData(datum.selfLinks.platform, datum.contentType);
 
-            if (datum.filename == null)
-            {
-                payload.Data.Add(new DataModel()
+                if (datum.filename == null && payload.Data is not null)
                 {
-                    Name = datum.dataType,
-                    ContentType = datum.contentType,
-                    Data = responseData as string
-                });
-            }
-            else
-            {
-                Guid? guid = await _natsClient.UploadFile(responseData as byte[]);
-                if (guid != null)
-                {
-                    payload.Attachments.Add(new models.Attachment()
+                    payload.Data.Add(new DataModel()
                     {
-                        Path = guid.ToString(),
-                        FileName = datum.filename,
+                        Name = datum.dataType,
                         ContentType = datum.contentType,
-                        Size = datum.size,
-                        isKvittering = datum.dataType.Equals("ref-data-as-pdf")
+                        Data = responseData as string
                     });
                 }
                 else
                 {
-                    _logger.LogError("Klarte ikke laste opp fil");
+                    if (responseData is not null)
+                    {
+                        Guid? guid = await _natsClient.UploadFile(responseData as byte[]);
+                        if (guid != null && payload.Attachments is not null && datum.dataType is not null)
+                        {
+                            payload.Attachments.Add(new MtAltinnCommon.Models.Attachment()
+                            {
+                                Path = guid.ToString(),
+                                FileName = datum.filename,
+                                ContentType = datum.contentType,
+                                Size = datum.size,
+                                isKvittering = datum.dataType.Equals("ref-data-as-pdf")
+                            });
+                        }
+                        else
+                        {
+                            _logger.LogError("Klarte ikke laste opp fil");
+                        }
+                    }
                 }
             }
         }
@@ -121,7 +124,7 @@ public class InstanceCompleteEventHandler : IEventHandler
         return await _natsClient.Publish(json, _natsTopicName);
     }
 
-    private async Task<CloudEventData> GetCloudEventData(CloudEvent cloudEvent)
+    private async Task<CloudEventData?> GetCloudEventData(CloudEvent cloudEvent)
     {
         var baseSkjemaResponse = await _maskinportenClient.GetAsync(cloudEvent.Source.ToString());
         if (!baseSkjemaResponse.IsSuccessStatusCode)
