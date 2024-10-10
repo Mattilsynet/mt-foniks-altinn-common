@@ -3,7 +3,7 @@ name: Build and Deploy NuGet Package to GitHub Packages
 on:
   push:
     branches:
-      - master  # Adjust the branch to whatever you want to trigger the workflow
+      - main  # Adjust the branch to whatever you want to trigger the workflow
 
 jobs:
   build-and-deploy:
@@ -20,18 +20,50 @@ jobs:
         with:
           dotnet-version: '8.0'  # Specify the .NET version used by your project
 
-      # Step 3: Restore NuGet packages
+      # Step 3: Fetch all tags to determine version
+      - name: Fetch Git tags
+        run: git fetch --prune --unshallow --tags
+
+      # Step 4: Determine the version number
+      - name: Set package version
+        id: set_version
+        run: |
+          # Get the latest tag (e.g., v1.0.0)
+          latest_tag=$(git describe --tags --abbrev=0 || echo "v1.0.0")
+          
+          # Get the number of commits since the last tag
+          commit_count=$(git rev-list $latest_tag..HEAD --count)
+
+          # Remove the 'v' from the tag to get the version number
+          base_version=${latest_tag#v}
+
+          # Generate the new version number (base_version + commit_count)
+          new_version="$base_version.$commit_count"
+
+          echo "New package version: $new_version"
+
+          # Set the new version as an output
+          echo "::set-output name=version::$new_version"
+
+      # Step 5: Update the .csproj file with the new version
+      - name: Update .csproj version
+        run: |
+          version="${{ steps.set_version.outputs.version }}"
+          echo "Setting project version to $version"
+          sed -i 's|<Version>.*</Version>|<Version>'"$version"'</Version>|g' *.csproj
+
+      # Step 6: Restore NuGet packages
       - name: Restore dependencies
         run: dotnet restore
 
-      # Step 4: Build the project
+      # Step 7: Build the project
       - name: Build the project
         run: dotnet build --configuration Release --no-restore
 
-      # Step 5: Pack the NuGet package
+      # Step 8: Pack the NuGet package
       - name: Pack the NuGet package
         run: dotnet pack --configuration Release --no-build --output ./output
 
-      # Step 6: Publish to GitHub Packages
+      # Step 9: Publish to GitHub Packages
       - name: Publish to GitHub Packages
         run: dotnet nuget push ./output/*.nupkg --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key "${{ secrets.GITHUB_TOKEN }}"
