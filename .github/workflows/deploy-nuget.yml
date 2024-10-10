@@ -3,7 +3,7 @@ name: Build and Deploy NuGet Package to GitHub Packages
 on:
   push:
     branches:
-      - main  # Adjust the branch to whatever you want to trigger the workflow
+      - master  # Adjust the branch to whatever you want to trigger the workflow
 
 jobs:
   build-and-deploy:
