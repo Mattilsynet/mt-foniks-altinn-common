@@ -1,0 +1,37 @@
+name: Build and Deploy NuGet Package to GitHub Packages
+
+on:
+  push:
+    branches:
+      - master  # Adjust the branch to whatever you want to trigger the workflow
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up .NET environment
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0'  # Specify the .NET version used by your project
+
+      # Step 3: Restore NuGet packages
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Step 4: Build the project
+      - name: Build the project
+        run: dotnet build --configuration Release --no-restore
+
+      # Step 5: Pack the NuGet package
+      - name: Pack the NuGet package
+        run: dotnet pack --configuration Release --no-build --output ./output
+
+      # Step 6: Publish to GitHub Packages
+      - name: Publish to GitHub Packages
+        run: dotnet nuget push ./output/*.nupkg --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key "${{ secrets.GITHUB_TOKEN }}"
