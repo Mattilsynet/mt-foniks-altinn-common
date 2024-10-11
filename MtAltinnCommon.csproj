@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <PackageId>Mt-Foniks-Altinn-Common</PackageId>
+    <PackageId>mattilsynet.foniks.altinn.common</PackageId>
     <Version>1.0.0</Version>
     <Authors>Mattilsynet</Authors>
     <Description>Felles funksjonalitet for altinnskjemaer</Description>
