@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using MtAltinnCommon.Clients.Nats;
 using MtAltinnCommon.Models;
+using MtAltinnCommon.Config;
 
 namespace MtAltinnCommon.EventHandlers;
 
@@ -22,12 +23,12 @@ public class InstanceCompleteEventHandler : IEventHandler
     public string EventType => "app.instance.process.completed";
 
     public InstanceCompleteEventHandler(INatsClient natsClient, ILogger<InstanceCompleteEventHandler> logger,
-        IHttpClientFactory clientFactory, string altinnHttpClientName, string natsTopicName)
+        IHttpClientFactory clientFactory, MtAltinnSettings altinnSettings)
     {
-        _natsTopicName = natsTopicName;
+        _natsTopicName = altinnSettings.NatsTopicName;
         _natsClient = natsClient;
         _logger = logger;
-        _maskinportenClient = clientFactory.CreateClient(altinnHttpClientName);
+        _maskinportenClient = clientFactory.CreateClient(altinnSettings.MaskinportenHttpClientName);
     }
 
     public async Task<bool> ProcessEvent(CloudEvent cloudEvent)
@@ -37,7 +38,7 @@ public class InstanceCompleteEventHandler : IEventHandler
             CloudEventData? skjemadata = await GetCloudEventData(cloudEvent);
             if (skjemadata != null && skjemadata.data != null)
             {
-                NatsAltinnPayload? data = await GetNatsAltinnPayload(skjemadata.data);
+                var data = await GetNatsAltinnPayload(skjemadata.data);
                 if (data != null)
                 {
                     return await PublishDataToNats(data);
@@ -74,9 +75,9 @@ public class InstanceCompleteEventHandler : IEventHandler
                 }
                 else
                 {
-                    if (responseData is not null)
+                    if (responseData is not null && responseData is byte[] byteData)
                     {
-                        Guid? guid = await _natsClient.UploadFile(responseData as byte[]);
+                        Guid? guid = await _natsClient.UploadFile(byteData);
                         if (guid != null && payload.Attachments is not null && datum.dataType is not null)
                         {
                             payload.Attachments.Add(new MtAltinnCommon.Models.Attachment()

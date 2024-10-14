@@ -6,27 +6,27 @@ using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.ObjectStore;
-
+using Altinn.App.Core.Internal.Secrets;
+using MtAltinnCommon.Config;
 namespace MtAltinnCommon.Clients.Nats;
 
 public class NatsClient : INatsClient
 {
     private readonly ILogger _logger;
-    private readonly string _natsJwt;
+
     private readonly string _natsSeed;
+    private readonly string _natsJwt;
+    private readonly string _natsClientName;
     private readonly string _natsUrl;
     private readonly int _natsTimeoutMinutes;
-    private readonly string _natsClientName;
 
-
-
-    public NatsClient(ILogger<NatsClient> logger, string jwt, string seed, string natsUrl, string natsClientName, int timeOutMinutes = 2){
+    public NatsClient(ILogger<NatsClient> logger, NatsClientSettings natsSettings, ISecretsClient secretsClient){
         _logger = logger;
-        _natsJwt = jwt;
-        _natsSeed = seed;
-        _natsClientName = natsClientName;
-        _natsUrl = natsUrl;
-        _natsTimeoutMinutes = timeOutMinutes;
+        _natsJwt = secretsClient.GetSecretAsync(natsSettings.JwtSecretName).Result;
+        _natsSeed = secretsClient.GetSecretAsync(natsSettings.SeedSecretName).Result;
+        _natsClientName = natsSettings.ClientName;
+        _natsUrl = natsSettings.Url;
+        _natsTimeoutMinutes = natsSettings.TimeoutMinutes;
         if (_natsJwt == null || _natsSeed == null || _natsUrl == null || _natsClientName == null)
         {
             throw new Exception("jwt, seed, natsUrl and nadsClientName must be set");

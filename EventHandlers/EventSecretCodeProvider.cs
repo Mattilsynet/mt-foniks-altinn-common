@@ -1,6 +1,8 @@
 using Altinn.App.Core.Internal.Events;
 using System.Threading.Tasks;
 using System;
+using Altinn.App.Core.Internal.Secrets;
+using MtAltinnCommon.Config;
 using Microsoft.Extensions.Logging;
 
 
@@ -11,14 +13,10 @@ public class EventSecretCodeProvider : IEventSecretCodeProvider
     private ILogger<EventSecretCodeProvider> _logger;
 
     /// <inheritdoc/>
-    public EventSecretCodeProvider(string secretCode, ILogger<EventSecretCodeProvider> logger)
+    public EventSecretCodeProvider(ISecretsClient secretsClient,MtAltinnSettings settings, ILogger<EventSecretCodeProvider> logger)
     {
         _logger = logger;
-        if (secretCode == null)
-        {
-            throw new ArgumentException("You must supply a secret code in constructor");
-        }
-        _secretCode = secretCode;
+        _secretCode = secretsClient.GetSecretAsync(settings.SecretCodeSecretName).Result;
     }
 
     /// <inheritdoc/>

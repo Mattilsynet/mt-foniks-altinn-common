@@ -6,6 +6,8 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
 using System.Linq;
+using MtAltinnCommon.Config;
+using Altinn.App.Core.Internal.Secrets;
 
 namespace MtAltinnCommon.Clients.Maskinporten;
 public class MaskinportenJwkClientDefinition : IClientDefinition
@@ -14,9 +16,9 @@ public class MaskinportenJwkClientDefinition : IClientDefinition
 
     public IMaskinportenSettings? ClientSettings { get; set; }
 
-    public MaskinportenJwkClientDefinition(string maskinPortenJwk)
+    public MaskinportenJwkClientDefinition(ISecretsClient secretsClient, MtAltinnSettings mtAltinnSettings)
     {
-        _maskinportenJwk = maskinPortenJwk;
+        _maskinportenJwk = secretsClient.GetSecretAsync(mtAltinnSettings.MaskinportenJWKSecretName).Result;
     }
     public async Task<ClientSecrets> GetClientSecrets()
     {
